@@ -1,0 +1,826 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Student Week Planner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one working column. Header with Japan/Vietnam clocks, tab bar, a context bar (student + month), then the active panel. */
+:root{
+  --bg:#F1F5F4; --surface:#FFFFFF; --surface2:#E8EEEC; --ink:#15272B; --muted:#5A6F74; --line:#D3DEDB;
+  --accent:#0B6B57; --accent-ink:#FFFFFF; --free:#CDEBE2; --free-ink:#0B6B57;
+  --book:#2F3F9E; --book-ink:#FFFFFF; --star:#E3A008; --danger:#B03A26; --focus:#2F3F9E;
+  --f-head:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --f-body:'DM Sans','Segoe UI',system-ui,sans-serif;
+  --f-mono:'DM Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1A1D; --surface:#14262A; --surface2:#1C3237; --ink:#E5F0EE; --muted:#92A9AE; --line:#294248;
+    --accent:#4FD1AE; --accent-ink:#0D1A1D; --free:#1B4A42; --free-ink:#7BE6C8;
+    --book:#9AA7FF; --book-ink:#0D1A1D; --star:#F2B632; --danger:#FF8C77; --focus:#9AA7FF;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1A1D; --surface:#14262A; --surface2:#1C3237; --ink:#E5F0EE; --muted:#92A9AE; --line:#294248;
+  --accent:#4FD1AE; --accent-ink:#0D1A1D; --free:#1B4A42; --free-ink:#7BE6C8;
+  --book:#9AA7FF; --book-ink:#0D1A1D; --star:#F2B632; --danger:#FF8C77; --focus:#9AA7FF;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--f-body); font-size:15px; line-height:1.5;
+  padding-block:20px 56px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+}
+#app{max-width:1040px; margin:0 auto; display:flex; flex-direction:column; gap:16px}
+h1,h2,h3{font-family:var(--f-head); line-height:1.15; margin:0; text-wrap:balance}
+h1{font-size:1.7rem; font-weight:700; letter-spacing:-.01em}
+h2{font-size:1.2rem; font-weight:700}
+h3{font-size:1rem; font-weight:700}
+p{margin:0}
+button,input,select,textarea{font:inherit; color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--focus); outline-offset:2px}
+.muted{color:var(--muted)}
+.mono{font-family:var(--f-mono); font-variant-numeric:tabular-nums}
+.small{font-size:.82rem}
+
+/* header */
+.top{display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:12px 24px}
+.top .sub{color:var(--muted); font-size:.9rem; margin-top:4px}
+.clocks{display:flex; gap:10px; flex-wrap:wrap}
+.clock{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:8px 12px; min-width:132px}
+.clock b{display:block; font-family:var(--f-mono); font-weight:500; font-size:1.2rem; font-variant-numeric:tabular-nums}
+.clock span{font-size:.75rem; color:var(--muted); letter-spacing:.04em; text-transform:uppercase}
+.status{font-size:.78rem; color:var(--muted); min-width:7ch}
+
+/* tabs */
+.tabs{display:flex; gap:4px; overflow-x:auto; border-bottom:1px solid var(--line); padding-bottom:0}
+.tab{background:none; border:0; border-bottom:3px solid transparent; padding:10px 14px; font-weight:500; color:var(--muted); white-space:nowrap; margin-bottom:-1px}
+.tab[aria-current="page"]{color:var(--ink); border-bottom-color:var(--accent); font-weight:700}
+.tab:hover{color:var(--ink)}
+
+/* context bar */
+.ctx{display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center}
+.field{display:flex; flex-direction:column; gap:4px; min-width:0}
+.field label,.lbl{font-size:.75rem; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); font-weight:500}
+input[type=text],input[type=number],input[type=date],select,textarea{
+  background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:8px 10px; min-width:0; width:100%;
+}
+select{width:auto; min-width:180px; max-width:100%}
+textarea{min-height:150px; resize:vertical; line-height:1.5}
+.monthnav{display:flex; align-items:center; gap:6px}
+.monthnav .ml{min-width:9.5ch; text-align:center; font-family:var(--f-head); font-weight:700}
+
+/* buttons */
+.btn{background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:8px 14px; font-weight:500}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:700}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.danger{color:var(--danger); border-color:var(--danger); background:transparent}
+.btn.sm{padding:5px 10px; font-size:.85rem}
+.icon-btn{width:34px; height:34px; padding:0; display:inline-grid; place-items:center}
+.seg{display:inline-flex; border:1px solid var(--line); border-radius:9px; overflow:hidden; background:var(--surface)}
+.seg button{background:none; border:0; padding:7px 12px; font-weight:500; color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); font-weight:700}
+
+/* surfaces */
+.card{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px}
+.card.flat{background:transparent}
+.stack{display:flex; flex-direction:column; gap:14px}
+.row{display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center}
+.cols{display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,1fr); gap:16px; align-items:start}
+@media (max-width:820px){.cols{grid-template-columns:minmax(0,1fr)}}
+.banner{background:var(--free); color:var(--free-ink); border-radius:10px; padding:10px 14px; display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; justify-content:space-between; font-size:.9rem}
+.empty{border:1px dashed var(--line); border-radius:12px; padding:28px 18px; text-align:center; color:var(--muted); display:flex; flex-direction:column; gap:10px; align-items:center}
+
+/* weekly grid */
+.gridwrap{overflow-x:auto; padding-bottom:4px}
+.grid{display:grid; grid-template-columns:42px 54px repeat(7,minmax(34px,1fr)); gap:3px; min-width:360px; user-select:none; -webkit-user-select:none}
+.gh{font-size:.72rem; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); text-align:center; padding:4px 0; font-weight:700}
+.gh.today{color:var(--accent)}
+.gh.sec{font-weight:500}
+.hl{font-family:var(--f-mono); font-size:.78rem; text-align:right; padding-right:4px; align-self:center; font-variant-numeric:tabular-nums}
+.hs{font-family:var(--f-mono); font-size:.68rem; color:var(--muted); align-self:center; text-align:right; padding-right:6px; font-variant-numeric:tabular-nums; line-height:1.1}
+.hs i{display:block; font-style:normal; font-size:.6rem}
+.cell{height:30px; border:0; border-radius:5px; background:var(--surface2); padding:0; font-family:var(--f-mono); font-size:.78rem; font-weight:500; display:grid; place-items:center; touch-action:manipulation; color:var(--muted)}
+.cell:hover{outline:1px solid var(--muted)}
+.cell[data-s="1"]{background:var(--free); color:var(--free-ink)}
+.cell[data-s="1"]:empty::after{content:""; width:6px; height:6px; border-radius:50%; background:var(--free-ink)}
+.cell[data-s="2"]{background:var(--book); color:var(--book-ink); font-weight:700}
+.cell[data-s="3"]{background:repeating-linear-gradient(135deg,var(--surface2) 0 4px,var(--line) 4px 6px); color:var(--muted)}
+.cell[data-n="2"]{filter:saturate(1.2) brightness(.95)}
+.cell[data-n="3"]{filter:saturate(1.5) brightness(.88)}
+.cell[data-n="4"]{filter:saturate(1.8) brightness(.8)}
+.legend{display:flex; flex-wrap:wrap; gap:8px 16px; font-size:.82rem; color:var(--muted)}
+.legend span{display:inline-flex; align-items:center; gap:6px}
+.sw{width:16px; height:16px; border-radius:4px; display:inline-block; background:var(--surface2)}
+.sw.free{background:var(--free)} .sw.book{background:var(--book)}
+.sw.taken{background:repeating-linear-gradient(135deg,var(--surface2) 0 3px,var(--line) 3px 5px)}
+
+/* lists and tables */
+.list{display:flex; flex-direction:column}
+.li{display:flex; flex-wrap:wrap; gap:4px 14px; align-items:center; justify-content:space-between; padding:10px 0; border-top:1px solid var(--line)}
+.li:first-child{border-top:0}
+.li .when{display:flex; flex-direction:column; gap:2px; min-width:0}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse; width:100%; min-width:460px}
+th{font-size:.72rem; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); text-align:left; font-weight:500; padding:6px 8px}
+td{padding:9px 8px; border-top:1px solid var(--line)}
+td.num,th.num{text-align:right; font-family:var(--f-mono); font-variant-numeric:tabular-nums}
+.pill{display:inline-block; border-radius:999px; padding:2px 10px; font-size:.78rem; font-weight:500; background:var(--surface2); color:var(--muted)}
+.pill.ok{background:var(--free); color:var(--free-ink)}
+.pill.late{background:var(--danger); color:var(--bg); font-weight:700}
+.content{white-space:pre-wrap; overflow-wrap:anywhere}
+.hw{display:flex; flex-wrap:wrap; gap:4px 12px; align-items:center; font-size:.85rem}
+.hw a{color:var(--book); font-weight:500; overflow-wrap:anywhere}
+.li select{min-width:0; padding:5px 8px; font-size:.85rem}
+.li.sess{align-items:flex-start}
+.li.sess .when{flex:1 1 260px}
+.totals{display:flex; flex-wrap:wrap; gap:10px}
+.total{background:var(--accent); color:var(--accent-ink); border-radius:10px; padding:10px 16px}
+.total b{display:block; font-family:var(--f-mono); font-size:1.35rem; font-weight:500; font-variant-numeric:tabular-nums}
+.total span{font-size:.75rem; letter-spacing:.05em; text-transform:uppercase; opacity:.85}
+
+/* calendar */
+.cal{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px}
+.cal .dow{font-size:.7rem; text-align:center; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; padding:2px 0}
+.cd{aspect-ratio:1/1; max-height:62px; width:100%; border:1px solid var(--line); border-radius:8px; background:var(--surface); padding:3px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; position:relative}
+.cd.empty{border:0; background:none}
+.cd .dn{font-family:var(--f-mono); font-size:.85rem; font-variant-numeric:tabular-nums}
+.cd .dh{font-size:.66rem; font-family:var(--f-mono)}
+.cd .dot{width:5px; height:5px; border-radius:50%; background:var(--muted)}
+.cd.on{background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:700}
+.cd.today .dn{text-decoration:underline; text-underline-offset:3px}
+.cd.pick{outline:2px solid var(--book); outline-offset:1px}
+
+/* feedback */
+.fbgrid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px}
+@media (max-width:720px){.fbgrid{grid-template-columns:minmax(0,1fr)}}
+.fbgrid .good h3{color:var(--accent)}
+.fbgrid .improve h3{color:var(--book)}
+
+/* stars */
+.starrow{display:flex; flex-wrap:wrap; gap:4px}
+.starrow svg{width:34px; height:34px}
+.starrow.sm svg{width:16px; height:16px}
+.star-on{fill:var(--star); stroke:var(--star)}
+.star-off{fill:none; stroke:var(--muted); opacity:.6}
+.bigcount{font-family:var(--f-mono); font-size:2.6rem; line-height:1; font-weight:500; font-variant-numeric:tabular-nums}
+.bar{height:8px; border-radius:4px; background:var(--surface2); overflow:hidden; flex:1; min-width:60px}
+.bar i{display:block; height:100%; background:var(--star)}
+
+#toast{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(20px + env(safe-area-inset-bottom, 0px)); background:var(--ink); color:var(--bg); padding:9px 16px; border-radius:9px; font-size:.88rem; z-index:20; max-width:calc(100vw - 32px)}
+#toast[hidden]{display:none}
+@media (prefers-reduced-motion: reduce){*{transition:none!important; animation:none!important}}
+</style>
+
+<div id="app"></div>
+<div id="toast" role="status" hidden></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- constants ---------- */
+var LS='student-week-planner:v1';
+var DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+var ZONES={
+  JST:{name:'Japan',abbr:'JST',tz:'Asia/Tokyo',off:9},
+  ICT:{name:'Vietnam',abbr:'ICT',tz:'Asia/Ho_Chi_Minh',off:7}
+};
+var CURS={JPY:0,VND:0,USD:2};
+var TABS=[['students','Students'],['schedule','Free time'],['study-days','Study days'],['feedback','Feedback'],['stars','Stars']];
+
+/* ---------- helpers ---------- */
+function $(s,r){return (r||document).querySelector(s)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function pad(n){return (n<10?'0':'')+n}
+function uid(){return Math.random().toString(36).slice(2,9)}
+function fmtH(n){return Number.isInteger(n)?String(n):String(Math.round(n*10)/10)}
+function money(a,c){
+  try{return new Intl.NumberFormat('en-US',{style:'currency',currency:c,minimumFractionDigits:CURS[c]||0,maximumFractionDigits:CURS[c]||0}).format(a)}
+  catch(e){return c+' '+Math.round(a)}
+}
+function todayStr(){
+  try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo'}).format(new Date())}
+  catch(e){return new Date().toISOString().slice(0,10)}
+}
+function monthLabel(ym){
+  var p=ym.split('-').map(Number);
+  return new Date(Date.UTC(p[0],p[1]-1,1)).toLocaleDateString('en-US',{month:'long',year:'numeric',timeZone:'UTC'});
+}
+function addMonth(ym,d){
+  var p=ym.split('-').map(Number), t=p[0]*12+(p[1]-1)+d;
+  return Math.floor(t/12)+'-'+pad((t%12)+1);
+}
+function ini(st){var m=(st.name||'?').match(/[A-Za-zÀ-ɏ぀-ヿ一-鿿]/); return m?m[0].toUpperCase():'?'}
+function mkRange(a,b){var r=[];for(var i=a;i<b;i++)r.push(i);return r}
+function nameOnly(s){return s.name}
+
+/* ---------- state ---------- */
+var S=null;
+var UI={
+  tab:'schedule', sid:null, month:todayStr().slice(0,7), zone:'JST', mode:'free', view:'one',
+  allHours:false, detail:null, confirm:null, status:'', formDate:todayStr(), formHours:'1',
+  editId:null, draft:{content:'',link:'',due:'',status:'none'}
+};
+try{var z0=localStorage.getItem(LS+':zone'); if(z0&&ZONES[z0])UI.zone=z0}catch(e){}
+
+function seed(){
+  var a={id:'s1',name:'Hana (example)',level:'YLE Flyers',rate:3000,rateType:'hour',currency:'JPY',goal:10,example:true};
+  var b={id:'s2',name:'Minh (example)',level:'IELTS Speaking',rate:250000,rateType:'session',currency:'VND',goal:10,example:true};
+  var av={s1:{},s2:{}}, d, h;
+  for(d=0;d<5;d++){for(h=16;h<19;h++)av.s1[d*24+h]=1}
+  av.s1[0*24+16]=2; av.s1[2*24+17]=2;
+  [1,3,5].forEach(function(dd){for(h=21;h<24;h++)av.s2[dd*24+h]=1});
+  av.s2[1*24+21]=2; av.s2[3*24+22]=2;
+  var ym=todayStr().slice(0,7);
+  var sessions=[
+    {id:'x1',sid:'s1',date:ym+'-02',hours:1,content:'Family words and "have got" sentences',link:'',due:'',hw:'none'},
+    {id:'x2',sid:'s2',date:ym+'-03',hours:1,content:'Part 1 topics: hometown and work',link:'https://example.com/ielts-part1',due:ym+'-06',hw:'doing'},
+    {id:'x3',sid:'s1',date:ym+'-04',hours:1,content:'Past simple: regular verbs',link:'https://example.com/past-simple',due:ym+'-08',hw:'checked'},
+    {id:'x4',sid:'s2',date:ym+'-05',hours:1.5,content:'Part 2 cue card practice, fluency drills',link:'',due:ym+'-12',hw:'todo'},
+    {id:'x5',sid:'s1',date:ym+'-09',hours:1,content:'Past simple: irregular verbs',link:'https://example.com/irregular-verbs',due:ym+'-13',hw:'todo'}
+  ];
+  var stars=[
+    {id:'t1',sid:'s1',date:ym+'-02',note:'Spoke in full sentences all lesson'},
+    {id:'t2',sid:'s1',date:ym+'-04',note:'Remembered every new word'},
+    {id:'t3',sid:'s1',date:ym+'-09',note:'Helped a classmate'},
+    {id:'t4',sid:'s2',date:ym+'-05',note:'Strong answer to Part 2'}
+  ];
+  var fb={}; fb['s1|'+ym]={good:'Listens carefully and answers in complete sentences.',improve:'Practise past tense verbs between lessons.'};
+  return {v:1,at:0,example:true,students:[a,b],avail:av,sessions:sessions,stars:stars,feedback:fb};
+}
+function normalize(r){
+  r=r||{};
+  return {v:1,at:r.at||0,example:!!r.example,students:r.students||[],avail:r.avail||{},sessions:r.sessions||[],stars:r.stars||[],feedback:r.feedback||{}};
+}
+function cur(){
+  if(!S.students.some(function(s){return s.id===UI.sid}))UI.sid=S.students.length?S.students[0].id:null;
+  for(var i=0;i<S.students.length;i++)if(S.students[i].id===UI.sid)return S.students[i];
+  return null;
+}
+function byId(id){for(var i=0;i<S.students.length;i++)if(S.students[i].id===id)return S.students[i];return null}
+
+/* ---------- persistence ---------- */
+var dbRef=null, saveTimer=null, saving=false, pendingSave=false, dbOk=false;
+function setStatus(t){UI.status=t; var el=$('#status'); if(el)el.textContent=t}
+function touch(){
+  S.at=Date.now(); setStatus('Saving…');
+  clearTimeout(saveTimer); saveTimer=setTimeout(flush,500);
+}
+function flush(){
+  try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}
+  if(!dbRef){setStatus('Saved on this device'); return}
+  if(saving){pendingSave=true; return}
+  saving=true;
+  var snap=JSON.stringify(S), at=S.at;
+  dbRef.set({json:snap,at:at}).then(function(){
+    saving=false; dbOk=true; setStatus('Saved');
+    if(pendingSave){pendingSave=false; flush()}
+  },function(){
+    saving=false; setStatus('Saved on this device');
+  });
+}
+
+/* ---------- time mapping (canonical storage = Japan time, Mon 00:00 = slot 0) ---------- */
+function shiftFor(){return 9-ZONES[UI.zone].off}
+function cellIdx(d,h){return (((d*24+h+shiftFor())%168)+168)%168}
+function tstr(idx,zk){
+  var diff=ZONES[zk].off-9, j=(((idx+diff)%168)+168)%168;
+  return DAYS[Math.floor(j/24)]+' '+pad(j%24)+':00';
+}
+function otherKey(){return UI.zone==='JST'?'ICT':'JST'}
+function getOwn(idx){var m=S.avail[UI.sid]; return (m&&m[idx])||0}
+function otherBooked(idx,sid){
+  for(var i=0;i<S.students.length;i++){
+    var s=S.students[i]; if(s.id===sid)continue;
+    var m=S.avail[s.id]; if(m&&m[idx]===2)return s;
+  }
+  return null;
+}
+function cellView(idx){
+  var i,s,m;
+  if(UI.view==='all'){
+    var free=0, booked=null;
+    for(i=0;i<S.students.length;i++){
+      s=S.students[i]; m=S.avail[s.id]||{};
+      if(m[idx]===2)booked=s; else if(m[idx]===1)free++;
+    }
+    if(booked)return {s:2,n:0,t:ini(booked),w:'lesson with '+booked.name};
+    return {s:free?1:0,n:Math.min(free,4),t:free?String(free):'',w:free+' students free'};
+  }
+  var st=cur(), own=getOwn(idx), ob=otherBooked(idx,UI.sid);
+  if(own===2)return {s:2,n:0,t:ini(st),w:'lesson booked'};
+  if(ob)return {s:3,n:0,t:ini(ob),w:'taken by '+ob.name};
+  if(own===1)return {s:1,n:0,t:'',w:'free'};
+  return {s:0,n:0,t:'',w:'not set'};
+}
+function cellLabel(idx,v){return tstr(idx,'JST')+' Japan, '+tstr(idx,'ICT')+' Vietnam, '+v.w}
+
+function lessonRuns(){
+  var runs=[];
+  S.students.forEach(function(s){
+    var m=S.avail[s.id]||{}, idxs=Object.keys(m).filter(function(k){return m[k]===2}).map(Number).sort(function(a,b){return a-b}), run=null;
+    idxs.forEach(function(i){
+      if(run&&i===run.end){run.end++}
+      else{run={sid:s.id,name:s.name,start:i,end:i+1}; runs.push(run)}
+    });
+  });
+  runs.sort(function(a,b){return a.start-b.start});
+  return runs;
+}
+function rangeStr(run,zk){
+  var diff=ZONES[zk].off-9, j=(((run.start+diff)%168)+168)%168, h=j%24, len=run.end-run.start;
+  return DAYS[Math.floor(j/24)]+' '+pad(h)+':00–'+pad((h+len)%24)+':00';
+}
+
+/* ---------- views ---------- */
+function headerHTML(){
+  return '<header class="top"><div><h1>Student Week Planner</h1><p class="sub">Free time, study days, monthly feedback and stars for your students.</p></div>'+
+    '<div class="row" style="align-items:flex-end">'+
+    '<div class="clocks">'+
+      '<div class="clock"><span>Japan · JST</span><b id="clk-JST">--:--</b></div>'+
+      '<div class="clock"><span>Vietnam · ICT</span><b id="clk-ICT">--:--</b></div>'+
+    '</div><span class="status" id="status">'+esc(UI.status)+'</span></div></header>';
+}
+function navHTML(){
+  return '<nav class="tabs" aria-label="Sections">'+TABS.map(function(t){
+    return '<button class="tab" type="button" data-act="tab" data-tab="'+t[0]+'"'+(UI.tab===t[0]?' aria-current="page"':'')+'>'+t[1]+'</button>';
+  }).join('')+'</nav>';
+}
+function bannerHTML(){
+  if(!S.students.some(function(s){return s.example}))return '';
+  return '<div class="banner"><span>Sample students are loaded so you can see how everything works. Remove them when you are ready to add your own.</span>'+
+    '<button class="btn sm" type="button" data-act="rmExamples">Remove samples</button></div>';
+}
+function ctxHTML(){
+  if(UI.tab==='students')return '';
+  var st=cur(), showMonth=(UI.tab!=='schedule'), html='<div class="ctx">';
+  if(S.students.length){
+    html+='<div class="field"><label for="sel-student">Student</label><select id="sel-student">'+
+      S.students.map(function(s){return '<option value="'+s.id+'"'+(s.id===UI.sid?' selected':'')+'>'+esc(s.name)+'</option>'}).join('')+'</select></div>';
+  }
+  if(showMonth){
+    html+='<div class="field"><span class="lbl">Month</span><div class="monthnav">'+
+      '<button class="btn icon-btn" type="button" data-act="mprev" aria-label="Previous month">‹</button>'+
+      '<span class="ml">'+monthLabel(UI.month)+'</span>'+
+      '<button class="btn icon-btn" type="button" data-act="mnext" aria-label="Next month">›</button></div></div>';
+  }
+  return html+'</div>';
+}
+function emptyHTML(){
+  return '<div class="empty"><p>Add your first student to start.</p><button class="btn primary" type="button" data-act="tab" data-tab="students">Add a student</button></div>';
+}
+
+/* Students */
+function studentsHTML(){
+  var cards=S.students.map(function(s){
+    return '<div class="card stack" data-card="'+s.id+'">'+
+      '<div class="row" style="justify-content:space-between"><h3>'+esc(s.name)+'</h3>'+
+      '<button class="btn sm danger" type="button" data-act="delStudent" data-id="'+s.id+'">'+(UI.confirm===s.id?'Confirm delete':'Delete')+'</button></div>'+
+      '<div class="fields">'+
+      fld('Name','text','name',s)+fld('Class or level','text','level',s)+
+      '<div class="field"><label for="rt-'+s.id+'">Charge by</label><select id="rt-'+s.id+'" data-f="rateType" data-sid="'+s.id+'"><option value="hour"'+(rateMode(s)==='hour'?' selected':'')+'>Hour</option><option value="session"'+(rateMode(s)==='session'?' selected':'')+'>Session</option></select></div>'+
+      fld('Rate','number','rate',s)+
+      '<div class="field"><label for="c-'+s.id+'">Currency</label><select id="c-'+s.id+'" data-f="currency" data-sid="'+s.id+'">'+
+        Object.keys(CURS).map(function(c){return '<option'+(s.currency===c?' selected':'')+'>'+c+'</option>'}).join('')+'</select></div>'+
+      fld('Stars per card','number','goal',s)+
+      '</div></div>';
+  }).join('');
+  var add='<form class="card stack" id="addForm"><h3>Add a student</h3><div class="fields">'+
+    '<div class="field"><label for="a-name">Name</label><input id="a-name" type="text" autocomplete="off"></div>'+
+    '<div class="field"><label for="a-level">Class or level</label><input id="a-level" type="text" placeholder="e.g. YLE Movers" autocomplete="off"></div>'+
+    '<div class="field"><label for="a-rt">Charge by</label><select id="a-rt"><option value="hour">Hour</option><option value="session">Session</option></select></div>'+
+    '<div class="field"><label for="a-rate">Rate</label><input id="a-rate" type="number" min="0" step="any" value="3000"></div>'+
+    '<div class="field"><label for="a-cur">Currency</label><select id="a-cur">'+Object.keys(CURS).map(function(c){return '<option>'+c+'</option>'}).join('')+'</select></div>'+
+    '<div class="field"><label for="a-goal">Stars per card</label><input id="a-goal" type="number" min="3" max="20" value="10"></div>'+
+    '</div><div><button class="btn primary" type="submit">Add student</button></div></form>';
+  return '<style>.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}</style>'+
+    '<div class="stack">'+cards+add+'</div>';
+}
+function fld(label,type,f,s){
+  var id='f-'+f+'-'+s.id, extra=type==='number'?(f==='goal'?' min="3" max="20" step="1"':' min="0" step="any"'):' autocomplete="off"';
+  return '<div class="field"><label for="'+id+'">'+label+'</label><input id="'+id+'" type="'+type+'" data-f="'+f+'" data-sid="'+s.id+'" value="'+esc(s[f])+'"'+extra+'></div>';
+}
+
+/* Schedule */
+function scheduleHTML(){
+  if(!S.students.length)return emptyHTML();
+  var st=cur(), z=ZONES[UI.zone], o=ZONES[otherKey()];
+  var hrs=UI.allHours?mkRange(0,24):mkRange(6,24);
+  var todayName=''; try{todayName=new Date().toLocaleDateString('en-US',{weekday:'short',timeZone:z.tz})}catch(e){}
+  var g='<div class="gh">'+z.abbr+'</div><div class="gh sec">'+o.abbr+'</div>';
+  DAYS.forEach(function(d){g+='<div class="gh'+(d===todayName?' today':'')+'">'+d+'</div>'});
+  hrs.forEach(function(h){
+    var sec=h+(o.off-z.off), note='';
+    if(sec<0){sec+=24; note='<i>prev day</i>'} else if(sec>=24){sec-=24; note='<i>next day</i>'}
+    g+='<div class="hl">'+pad(h)+':00</div><div class="hs">'+pad(sec)+':00'+note+'</div>';
+    for(var d=0;d<7;d++){
+      var idx=cellIdx(d,h), v=cellView(idx);
+      g+='<button type="button" class="cell" data-i="'+idx+'" data-s="'+v.s+'" data-n="'+v.n+'" aria-label="'+esc(cellLabel(idx,v))+'">'+esc(v.t)+'</button>';
+    }
+  });
+  var ctl='<div class="row">'+
+    '<div class="seg" role="group" aria-label="Time zone for the grid"><button type="button" data-act="zone" data-v="JST" aria-pressed="'+(UI.zone==='JST')+'">Japan time</button><button type="button" data-act="zone" data-v="ICT" aria-pressed="'+(UI.zone==='ICT')+'">Vietnam time</button></div>'+
+    '<div class="seg" role="group" aria-label="View"><button type="button" data-act="view" data-v="one" aria-pressed="'+(UI.view==='one')+'">This student</button><button type="button" data-act="view" data-v="all" aria-pressed="'+(UI.view==='all')+'">All students</button></div>'+
+    (UI.view==='one'?'<div class="seg" role="group" aria-label="Tool"><button type="button" data-act="mode" data-v="free" aria-pressed="'+(UI.mode==='free')+'">Mark free</button><button type="button" data-act="mode" data-v="book" aria-pressed="'+(UI.mode==='book')+'">Book lesson</button><button type="button" data-act="mode" data-v="erase" aria-pressed="'+(UI.mode==='erase')+'">Erase</button></div>':'')+
+    '<label class="row small" style="gap:6px"><input type="checkbox" id="allhours"'+(UI.allHours?' checked':'')+'> Show night hours</label></div>';
+  var legend=UI.view==='one'
+    ?'<div class="legend"><span><i class="sw free"></i>Free</span><span><i class="sw book"></i>Lesson booked for '+esc(st.name)+'</span><span><i class="sw taken"></i>Booked for another student</span></div>'
+    :'<div class="legend"><span><i class="sw free"></i>Number of students free (darker means more)</span><span><i class="sw book"></i>Lesson booked (initial)</span></div>';
+  var how=UI.view==='one'
+    ?'Click or drag across hours to mark when '+esc(st.name)+' is free. Switch to Book lesson to place a class inside that time.'
+    :'Select an hour to see who is free. Switch back to This student to edit.';
+  var detail='';
+  if(UI.view==='all'&&UI.detail!=null){
+    var idx2=UI.detail, fr=[], bk=[];
+    S.students.forEach(function(s){var v=(S.avail[s.id]||{})[idx2]; if(v===2)bk.push(s.name); else if(v===1)fr.push(s.name)});
+    detail='<div class="card"><h3 class="mono" style="font-family:var(--f-mono)">'+tstr(idx2,'JST')+' Japan · '+tstr(idx2,'ICT')+' Vietnam</h3>'+
+      '<p style="margin-top:6px"><b>Free:</b> '+(fr.length?esc(fr.join(', ')):'<span class="muted">nobody</span>')+'</p>'+
+      '<p><b>Lesson:</b> '+(bk.length?esc(bk.join(', ')):'<span class="muted">none booked</span>')+'</p></div>';
+  }
+  var runs=lessonRuns();
+  var plan='<div class="card"><div class="row" style="justify-content:space-between"><h2>Weekly lesson plan</h2>'+
+    (runs.length?'<button class="btn sm" type="button" data-act="copySched">Copy schedule</button>':'')+'</div>'+
+    (runs.length?'<div class="list">'+runs.map(function(r){
+      return '<div class="li"><b>'+esc(r.name)+'</b><div class="when mono small"><span>'+rangeStr(r,'JST')+' <span class="muted">Japan</span></span><span>'+rangeStr(r,'ICT')+' <span class="muted">Vietnam</span></span></div></div>';
+    }).join('')+'</div>':'<p class="muted" style="margin-top:8px">No lessons booked yet. Mark free time, then use Book lesson.</p>')+'</div>';
+  return '<div class="stack">'+ctl+'<p class="muted small">'+how+' Hours are stored in Japan time, so switching zones never changes the schedule.</p>'+
+    '<div class="gridwrap"><div class="grid" id="grid">'+g+'</div></div>'+legend+detail+plan+'</div>';
+}
+
+/* Study days */
+function rateMode(s){return s.rateType==='session'?'session':'hour'}
+function feeOf(x,s){return rateMode(s)==='session'?(+s.rate||0):x.hours*(+s.rate||0)}
+function rateLabel(s){return money(+s.rate||0,s.currency)+(rateMode(s)==='session'?' / session':' / hour')}
+var HW=[['none','No homework'],['todo','To do'],['doing','In progress'],['submitted','Submitted'],['checked','Checked']];
+function hwName(k){for(var i=0;i<HW.length;i++)if(HW[i][0]===k)return HW[i][1];return HW[0][1]}
+function hwLate(x){return !!(x.hw&&x.hw!=='none'&&x.hw!=='submitted'&&x.hw!=='checked'&&x.due&&x.due<todayStr())}
+function linkHTML(u){
+  if(!/^https?:\/\//i.test(u))return '<span>'+esc(u)+'</span>';
+  var host=u; try{host=new URL(u).hostname}catch(e){}
+  return '<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">Homework link · '+esc(host)+' ↗</a>';
+}
+function sessItem(x,s){
+  var hasHw=(x.hw&&x.hw!=='none')||x.link||x.due, hw='';
+  if(hasHw){
+    hw='<div class="hw">'+(x.link?linkHTML(x.link):'')+(x.due?'<span class="mono">Due '+esc(x.due)+'</span>':'')+(hwLate(x)?'<span class="pill late">Overdue</span>':'')+'</div>';
+  }
+  return '<div class="li sess"><div class="when"><b class="mono">'+x.date+'</b><span class="small muted">'+esc(s.name)+' · '+fmtH(x.hours)+' h · '+money(feeOf(x,s),s.currency)+'</span>'+
+    (x.content?'<span class="content small">'+esc(x.content)+'</span>':'')+hw+'</div>'+
+    '<div class="row"><select data-hws="'+x.id+'" aria-label="Homework status for '+x.date+'">'+HW.map(function(h){return '<option value="'+h[0]+'"'+((x.hw||'none')===h[0]?' selected':'')+'>'+h[1]+'</option>'}).join('')+'</select>'+
+    '<button class="btn sm" type="button" data-act="editSession" data-id="'+x.id+'" aria-label="Edit study day '+x.date+'">Edit</button>'+
+    '<button class="btn sm" type="button" data-act="delSession" data-id="'+x.id+'" aria-label="Remove study day '+x.date+'">Remove</button></div></div>';
+}
+function sessionsInMonth(){
+  return S.sessions.filter(function(x){return x.date.slice(0,7)===UI.month}).sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:0});
+}
+function calHTML(){
+  var p=UI.month.split('-').map(Number), first=(new Date(Date.UTC(p[0],p[1]-1,1)).getUTCDay()+6)%7, n=new Date(Date.UTC(p[0],p[1],0)).getUTCDate(), t=todayStr();
+  var c=DAYS.map(function(d){return '<span class="dow">'+d+'</span>'}).join(''), i;
+  for(i=0;i<first;i++)c+='<span class="cd empty"></span>';
+  for(i=1;i<=n;i++){
+    var ds=UI.month+'-'+pad(i), mine=0, other=false;
+    S.sessions.forEach(function(x){if(x.date===ds){if(x.sid===UI.sid)mine+=x.hours; else other=true}});
+    c+='<button type="button" class="cd'+(mine?' on':'')+(ds===t?' today':'')+(ds===UI.formDate?' pick':'')+'" data-act="pickDay" data-date="'+ds+'" aria-label="'+ds+(mine?', '+fmtH(mine)+' hours':'')+'">'+
+      '<span class="dn">'+i+'</span>'+(mine?'<span class="dh">'+fmtH(mine)+'h</span>':(other?'<span class="dot"></span>':''))+'</button>';
+  }
+  return '<div class="cal">'+c+'</div>';
+}
+function studyHTML(){
+  if(!S.students.length)return emptyHTML();
+  var st=cur(), list=sessionsInMonth(), rows=[], totals={};
+  S.students.forEach(function(s){
+    var mine=list.filter(function(x){return x.sid===s.id}), hrs=mine.reduce(function(a,x){return a+x.hours},0), amt=mine.reduce(function(a,x){return a+feeOf(x,s)},0);
+    rows.push({s:s,n:mine.length,h:hrs,a:amt});
+    if(mine.length)totals[s.currency]=(totals[s.currency]||0)+amt;
+  });
+  var totalHTML=Object.keys(totals).length
+    ?Object.keys(totals).map(function(c){return '<div class="total"><span>Total for '+monthLabel(UI.month)+'</span><b>'+money(totals[c],c)+'</b></div>'}).join('')
+    :'<div class="total" style="background:var(--surface2);color:var(--muted)"><span>Total for '+monthLabel(UI.month)+'</span><b>'+money(0,st.currency)+'</b></div>';
+  var tbl='<div class="tablewrap"><table><thead><tr><th>Student</th><th class="num">Days</th><th class="num">Hours</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead><tbody>'+
+    rows.map(function(r){return '<tr><td>'+esc(r.s.name)+'</td><td class="num">'+r.n+'</td><td class="num">'+fmtH(r.h)+'</td><td class="num">'+rateLabel(r.s)+'</td><td class="num"><b>'+money(r.a,r.s.currency)+'</b></td></tr>'}).join('')+'</tbody></table></div>';
+  var items=list.length?'<div class="list">'+list.map(function(x){
+    var s=byId(x.sid); if(!s)return '';
+    return sessItem(x,s);
+  }).join('')+'</div>':'<p class="muted">No study days logged for this month yet.</p>';
+  var hwOpen=list.filter(function(x){return x.hw==='todo'||x.hw==='doing'}).length,
+      hwLateN=list.filter(hwLate).length,
+      hwDone=list.filter(function(x){return x.hw==='submitted'||x.hw==='checked'}).length;
+  var hwSummary=(hwOpen+hwLateN+hwDone)?'<div class="row"><span class="pill">Homework open: '+hwOpen+'</span>'+(hwLateN?'<span class="pill late">Overdue: '+hwLateN+'</span>':'<span class="pill">Overdue: 0</span>')+'<span class="pill ok">Submitted or checked: '+hwDone+'</span></div>':'';
+  var d0=UI.draft, editing=!!UI.editId, bySes=rateMode(st)==='session';
+  var rateCard='<div class="card stack"><div class="row" style="justify-content:space-between"><h2>Teaching rate</h2><span class="muted small">'+esc(st.name)+'</span></div>'+
+    '<div class="row" style="align-items:flex-end">'+
+    '<div class="field"><span class="lbl">Charge by</span><div class="seg" role="group" aria-label="Charge by">'+
+      '<button type="button" data-act="rateType" data-v="hour" aria-pressed="'+(!bySes)+'">By hour</button>'+
+      '<button type="button" data-act="rateType" data-v="session" aria-pressed="'+bySes+'">By session</button></div></div>'+
+    '<div class="field" style="flex:1 1 140px;max-width:220px"><label for="tr-rate">'+(bySes?'Rate per session':'Rate per hour')+'</label><input id="tr-rate" type="number" min="0" step="any" data-f="rate" data-sid="'+st.id+'" value="'+esc(st.rate)+'"></div>'+
+    '<div class="field"><label for="tr-cur">Currency</label><select id="tr-cur" data-f="currency" data-sid="'+st.id+'">'+Object.keys(CURS).map(function(c){return '<option'+(st.currency===c?' selected':'')+'>'+c+'</option>'}).join('')+'</select></div></div>'+
+    '<p class="small muted">'+(bySes?'Each study day counts as one session, so the amount is study days × the session rate, whatever the hours.':'The amount is hours studied × the hourly rate, so 1.5 hours is 1.5 × the rate.')+'</p></div>';
+  var form='<form class="card stack" id="sessForm"><h3>'+(editing?'Edit study day for ':'Add a study day for ')+esc(st.name)+'</h3>'+
+    '<div class="row"><div class="field" style="flex:1 1 150px"><label for="f-date">Date</label><input id="f-date" type="date" value="'+UI.formDate+'"></div>'+
+    '<div class="field" style="flex:0 1 110px"><label for="f-hours">Hours</label><input id="f-hours" type="number" min="0.5" max="12" step="0.5" value="'+esc(UI.formHours)+'"></div></div>'+
+    '<div class="field"><label for="f-content">Class content</label><textarea id="f-content" style="min-height:90px" placeholder="Topics, pages and vocabulary covered">'+esc(d0.content)+'</textarea></div>'+
+    '<div class="field"><label for="f-link">Homework link</label><input id="f-link" type="text" inputmode="url" placeholder="https://" value="'+esc(d0.link)+'" autocomplete="off"></div>'+
+    '<div class="row"><div class="field" style="flex:1 1 150px"><label for="f-due">Homework deadline</label><input id="f-due" type="date" value="'+esc(d0.due)+'"></div>'+
+    '<div class="field" style="flex:1 1 150px"><label for="f-hw">Homework status</label><select id="f-hw" style="width:100%">'+HW.map(function(h){return '<option value="'+h[0]+'"'+(d0.status===h[0]?' selected':'')+'>'+h[1]+'</option>'}).join('')+'</select></div></div>'+
+    '<div class="row"><button class="btn primary" type="submit">'+(editing?'Save changes':'Add study day')+'</button>'+(editing?'<button class="btn" type="button" data-act="cancelEdit">Cancel</button>':'')+'</div>'+
+    '<p class="small muted">Pick a date on the calendar or in the box. '+(rateMode(st)==='session'?'Each study day counts as one session at '+rateLabel(st)+'.':'Amount = hours × '+rateLabel(st)+'.')+'</p></form>';
+  return '<div class="stack"><div class="totals">'+totalHTML+'</div>'+rateCard+
+    '<div class="cols"><div class="card stack"><h2>'+monthLabel(UI.month)+'</h2>'+calHTML()+'<p class="small muted">Filled days have lessons for '+esc(st.name)+'. A small dot means another student studied that day.</p></div>'+
+    '<div class="stack">'+form+'</div></div>'+
+    '<div class="card stack"><h2>Monthly expenses</h2>'+tbl+'</div>'+
+    '<div class="card stack"><h2>Study days and homework</h2>'+hwSummary+items+'</div></div>';
+}
+
+/* Feedback */
+function fbKey(){return UI.sid+'|'+UI.month}
+function monthStats(sid){
+  var list=S.sessions.filter(function(x){return x.sid===sid&&x.date.slice(0,7)===UI.month});
+  var stars=S.stars.filter(function(x){return x.sid===sid&&x.date.slice(0,7)===UI.month}).length;
+  return {days:list.length,hours:list.reduce(function(a,x){return a+x.hours},0),stars:stars};
+}
+function feedbackHTML(){
+  if(!S.students.length)return emptyHTML();
+  var st=cur(), f=S.feedback[fbKey()]||{good:'',improve:''}, ms=monthStats(st.id);
+  var over=S.students.map(function(s){
+    var x=S.feedback[s.id+'|'+UI.month], done=x&&((x.good||'').trim()||(x.improve||'').trim());
+    return '<div class="li"><span>'+esc(s.name)+'</span><span class="pill'+(done?' ok':'')+'">'+(done?'Written':'Not written')+'</span></div>';
+  }).join('');
+  return '<div class="stack"><div class="card row" style="justify-content:space-between"><div><h2>'+esc(st.name)+' · '+monthLabel(UI.month)+'</h2>'+
+    '<p class="muted small">'+ms.days+' study days · '+fmtH(ms.hours)+' hours · '+ms.stars+' stars this month</p></div>'+
+    '<button class="btn" type="button" data-act="copyFb">Copy feedback</button></div>'+
+    '<div class="fbgrid"><div class="card good stack"><h3>Good side</h3><label class="lbl" for="fb-good">What went well</label>'+
+    '<textarea id="fb-good" data-fb="good" placeholder="Strengths, progress, moments to celebrate">'+esc(f.good||'')+'</textarea></div>'+
+    '<div class="card improve stack"><h3>Side to improve</h3><label class="lbl" for="fb-improve">What to work on next</label>'+
+    '<textarea id="fb-improve" data-fb="improve" placeholder="Skills to practise, habits to build, next goals">'+esc(f.improve||'')+'</textarea></div></div>'+
+    '<div class="card stack"><h3>All students · '+monthLabel(UI.month)+'</h3><div class="list">'+over+'</div></div></div>';
+}
+
+/* Stars */
+function starSVG(on){
+  return '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="'+(on?'star-on':'star-off')+'" stroke-width="1.6" stroke-linejoin="round" d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2 6.3 20.3l1.2-6.4L2.8 9.5l6.4-.8z"/></svg>';
+}
+function starTotal(sid){return S.stars.filter(function(x){return x.sid===sid}).length}
+function row(n,total,cls){var h='';for(var i=0;i<total;i++)h+=starSVG(i<n);return '<div class="starrow '+(cls||'')+'" role="img" aria-label="'+n+' of '+total+' stars">'+h+'</div>'}
+function goalOf(s){var g=parseInt(s.goal,10); return isFinite(g)?Math.min(20,Math.max(3,g)):10}
+function starsHTML(){
+  if(!S.students.length)return emptyHTML();
+  var st=cur(), goal=goalOf(st), tot=starTotal(st.id), filled=tot?((tot-1)%goal)+1:0, cards=Math.floor(tot/goal);
+  var mine=S.stars.filter(function(x){return x.sid===st.id}).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:(a.id<b.id?1:-1)});
+  var inMonth=mine.filter(function(x){return x.date.slice(0,7)===UI.month}).length;
+  var max=Math.max.apply(null,S.students.map(function(s){return starTotal(s.id)}).concat([1]));
+  var board=S.students.map(function(s){
+    var t=starTotal(s.id);
+    return '<div class="row" style="flex-wrap:nowrap"><span style="flex:0 0 38%;min-width:0;overflow-wrap:anywhere">'+esc(s.name)+'</span><div class="bar"><i style="width:'+Math.round(t/max*100)+'%"></i></div><b class="mono" style="min-width:3ch;text-align:right">'+t+'</b></div>';
+  }).join('');
+  return '<div class="stack"><div class="card stack"><div class="row" style="justify-content:space-between;align-items:flex-end"><div><h2>'+esc(st.name)+'</h2>'+
+    '<p class="muted small">Card of '+goal+' stars · '+cards+(cards===1?' card':' cards')+' completed · '+inMonth+' stars in '+monthLabel(UI.month)+'</p></div>'+
+    '<div class="bigcount" aria-label="'+tot+' stars in total">'+tot+'</div></div>'+row(filled,goal)+'</div>'+
+    '<form class="card stack" id="starForm"><h3>Give a star</h3><div class="row">'+
+    '<div class="field" style="flex:2 1 220px"><label for="star-note">Reason</label><input id="star-note" type="text" placeholder="e.g. Great speaking today" autocomplete="off"></div>'+
+    '<div class="field" style="flex:1 1 150px"><label for="star-date">Date</label><input id="star-date" type="date" value="'+todayStr()+'"></div></div>'+
+    '<div><button class="btn primary" type="submit">Add star</button></div></form>'+
+    '<div class="cols"><div class="card stack"><h3>Star log</h3>'+(mine.length?'<div class="list">'+mine.map(function(x){
+      return '<div class="li"><div class="when"><b class="mono">'+x.date+'</b><span class="small muted">'+(x.note?esc(x.note):'No reason noted')+'</span></div><button class="btn sm" type="button" data-act="delStar" data-id="'+x.id+'" aria-label="Remove star from '+x.date+'">Remove</button></div>';
+    }).join('')+'</div>':'<p class="muted">No stars yet.</p>')+'</div>'+
+    '<div class="card stack"><h3>Star board</h3>'+board+'</div></div></div>';
+}
+
+/* ---------- render ---------- */
+var app=document.getElementById('app');
+function panelHTML(){
+  switch(UI.tab){
+    case 'students':return studentsHTML();
+    case 'study-days':return studyHTML();
+    case 'feedback':return feedbackHTML();
+    case 'stars':return starsHTML();
+    default:return scheduleHTML();
+  }
+}
+function render(){
+  var y=window.scrollY;
+  cur();
+  app.innerHTML=headerHTML()+navHTML()+bannerHTML()+ctxHTML()+'<main>'+panelHTML()+'</main>';
+  window.scrollTo(0,y);
+  tick();
+}
+function tick(){
+  Object.keys(ZONES).forEach(function(k){
+    var el=document.getElementById('clk-'+k); if(!el)return;
+    try{el.textContent=new Intl.DateTimeFormat('en-GB',{timeZone:ZONES[k].tz,weekday:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date())}catch(e){}
+  });
+}
+var tt=null;
+function toast(m){
+  var el=document.getElementById('toast'); el.textContent=m; el.hidden=false;
+  clearTimeout(tt); tt=setTimeout(function(){el.hidden=true},2200);
+}
+function copyText(t){
+  function fallback(){
+    var ta=document.createElement('textarea'); ta.value=t; ta.style.cssText='position:fixed;opacity:0;left:0;top:0';
+    document.body.appendChild(ta); ta.select(); var ok=false;
+    try{ok=document.execCommand('copy')}catch(e){}
+    ta.remove(); toast(ok?'Copied':'Copy was blocked. Select the text and copy it by hand.');
+  }
+  try{navigator.clipboard.writeText(t).then(function(){toast('Copied')},fallback)}catch(e){fallback()}
+}
+
+/* ---------- actions ---------- */
+function removeStudentData(id){
+  S.students=S.students.filter(function(s){return s.id!==id});
+  delete S.avail[id];
+  S.sessions=S.sessions.filter(function(x){return x.sid!==id});
+  S.stars=S.stars.filter(function(x){return x.sid!==id});
+  Object.keys(S.feedback).forEach(function(k){if(k.indexOf(id+'|')===0)delete S.feedback[k]});
+}
+function setTab(t){UI.tab=t; UI.confirm=null; if(location.hash.slice(1)!==t){try{location.hash=t}catch(e){}} render()}
+
+var stroke=null, lastPT='mouse';
+function decide(idx){
+  var own=getOwn(idx);
+  if(UI.mode==='erase')return 'clear';
+  if(UI.mode==='free')return own===1?'clear':'free';
+  return own===2?'free':'book';
+}
+function applyAct(act,idx){
+  var m=S.avail[UI.sid]||(S.avail[UI.sid]={});
+  if(act==='book'){if(otherBooked(idx,UI.sid))return false; m[idx]=2}
+  else if(act==='free'){m[idx]=1}
+  else{delete m[idx]}
+  return true;
+}
+function paint(c,idx){
+  var v=cellView(idx);
+  c.dataset.s=v.s; c.dataset.n=v.n; c.textContent=v.t; c.setAttribute('aria-label',cellLabel(idx,v));
+}
+function endStroke(){if(stroke){stroke=null; touch(); render()}}
+
+app.addEventListener('pointerdown',function(e){
+  lastPT=e.pointerType;
+  var c=e.target.closest&&e.target.closest('.cell');
+  if(!c||UI.tab!=='schedule'||UI.view!=='one'||e.pointerType!=='mouse'||e.button!==0)return;
+  e.preventDefault();
+  var idx=+c.dataset.i; stroke={act:decide(idx)};
+  if(applyAct(stroke.act,idx))paint(c,idx);
+});
+app.addEventListener('pointerover',function(e){
+  if(!stroke)return;
+  var c=e.target.closest&&e.target.closest('.cell'); if(!c)return;
+  var idx=+c.dataset.i; if(applyAct(stroke.act,idx))paint(c,idx);
+});
+window.addEventListener('pointerup',endStroke);
+window.addEventListener('pointercancel',endStroke);
+
+app.addEventListener('click',function(e){
+  var cell=e.target.closest('.cell');
+  if(cell&&UI.tab==='schedule'){
+    var idx=+cell.dataset.i;
+    if(UI.view==='all'){UI.detail=idx; render(); return}
+    if(e.detail===0||lastPT!=='mouse'){
+      var act=decide(idx);
+      if(applyAct(act,idx)){paint(cell,idx); touch(); render()}
+      else toast('That hour already has a lesson for another student');
+    }
+    return;
+  }
+  var b=e.target.closest('[data-act]'); if(!b)return;
+  var a=b.dataset.act, id=b.dataset.id, v=b.dataset.v;
+  switch(a){
+    case 'tab':setTab(b.dataset.tab);break;
+    case 'zone':UI.zone=v; try{localStorage.setItem(LS+':zone',v)}catch(x){} render();break;
+    case 'view':UI.view=v; UI.detail=null; render();break;
+    case 'mode':UI.mode=v; render();break;
+    case 'mprev':UI.month=addMonth(UI.month,-1); render();break;
+    case 'mnext':UI.month=addMonth(UI.month,1); render();break;
+    case 'pickDay':UI.formDate=b.dataset.date; render();break;
+    case 'rateType':
+      var rs=cur(); if(rs&&rs.rateType!==v){rs.rateType=v; touch(); render()}
+      break;
+    case 'editSession':
+      var ex=S.sessions.filter(function(x){return x.id===id})[0]; if(!ex)break;
+      UI.editId=id; UI.sid=ex.sid; UI.formDate=ex.date; UI.formHours=String(ex.hours); UI.month=ex.date.slice(0,7);
+      UI.draft={content:ex.content||'',link:ex.link||'',due:ex.due||'',status:ex.hw||'none'};
+      render();
+      var fe=$('#sessForm'); if(fe&&fe.scrollIntoView)fe.scrollIntoView({block:'center'});
+      break;
+    case 'cancelEdit':UI.editId=null; UI.draft={content:'',link:'',due:'',status:'none'}; render();break;
+    case 'delSession':
+      if(UI.editId===id){UI.editId=null; UI.draft={content:'',link:'',due:'',status:'none'}}
+      S.sessions=S.sessions.filter(function(x){return x.id!==id}); touch(); render(); toast('Study day removed');break;
+    case 'delStar':S.stars=S.stars.filter(function(x){return x.id!==id}); touch(); render(); toast('Star removed');break;
+    case 'delStudent':
+      if(UI.confirm===id){UI.confirm=null; removeStudentData(id); touch(); render(); toast('Student deleted')}
+      else{UI.confirm=id; render()}
+      break;
+    case 'rmExamples':
+      S.students.filter(function(s){return s.example}).forEach(function(s){removeStudentData(s.id)});
+      S.example=false; touch(); render(); toast('Samples removed');break;
+    case 'copySched':
+      copyText('Weekly lesson schedule\n'+lessonRuns().map(function(r){return r.name+': '+rangeStr(r,'JST')+' (Japan) · '+rangeStr(r,'ICT')+' (Vietnam)'}).join('\n'));break;
+    case 'copyFb':
+      var st=cur(), f=S.feedback[fbKey()]||{}, ms=monthStats(st.id);
+      copyText('Monthly feedback: '+st.name+' · '+monthLabel(UI.month)+'\n'+ms.days+' study days · '+fmtH(ms.hours)+' hours · '+ms.stars+' stars\n\nGood side:\n'+(f.good||'-')+'\n\nSide to improve:\n'+(f.improve||'-'));break;
+  }
+});
+app.addEventListener('change',function(e){
+  var t=e.target;
+  if(t.id==='sel-student'){UI.sid=t.value; UI.detail=null; render()}
+  else if(t.id==='allhours'){UI.allHours=t.checked; render()}
+  else if(t.id==='f-date'){if(t.value){UI.formDate=t.value; render()}}
+  else if(t.id==='f-hours'){UI.formHours=t.value}
+  else if(t.id==='f-due'){UI.draft.due=t.value}
+  else if(t.id==='f-hw'){UI.draft.status=t.value}
+  else if(t.dataset&&t.dataset.hws){
+    var sx=S.sessions.filter(function(x){return x.id===t.dataset.hws})[0];
+    if(sx){sx.hw=t.value; touch(); render()}
+  }
+  else if(t.dataset&&t.dataset.f){render()}
+});
+app.addEventListener('input',function(e){
+  var t=e.target;
+  if(t.id==='f-content'){UI.draft.content=t.value; return}
+  if(t.id==='f-link'){UI.draft.link=t.value; return}
+  if(t.dataset&&t.dataset.fb){
+    var k=fbKey(), f=S.feedback[k]||(S.feedback[k]={good:'',improve:''});
+    f[t.dataset.fb]=t.value; touch(); return;
+  }
+  if(t.dataset&&t.dataset.f&&t.dataset.sid){
+    var s=byId(t.dataset.sid); if(!s)return;
+    var key=t.dataset.f;
+    if(key==='rate'){s.rate=Math.max(0,parseFloat(t.value)||0)}
+    else if(key==='goal'){var g=parseInt(t.value,10); if(isFinite(g))s.goal=Math.min(20,Math.max(3,g))}
+    else s[key]=t.value;
+    if(key==='name'||key==='level')s.example=false;
+    touch();
+  }
+});
+app.addEventListener('submit',function(e){
+  e.preventDefault();
+  var f=e.target.id;
+  if(f==='addForm'){
+    var name=$('#a-name').value.trim();
+    if(!name){toast('Enter a name first'); $('#a-name').focus(); return}
+    var s={id:uid(),name:name,level:$('#a-level').value.trim(),rate:Math.max(0,parseFloat($('#a-rate').value)||0),rateType:$('#a-rt').value,currency:$('#a-cur').value,goal:Math.min(20,Math.max(3,parseInt($('#a-goal').value,10)||10))};
+    S.students.push(s); UI.sid=s.id; touch(); render(); toast(name+' added');
+  }else if(f==='sessForm'){
+    var d=$('#f-date').value, h=parseFloat($('#f-hours').value);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){toast('Choose a date'); return}
+    if(!(h>0)){toast('Enter the hours studied'); return}
+    var content=$('#f-content').value.trim(), link=$('#f-link').value.trim(), due=$('#f-due').value, hw=$('#f-hw').value;
+    if(link&&!/^[a-z][a-z0-9+.-]*:/i.test(link))link='https://'+link;
+    if(link&&!/^https?:\/\//i.test(link)){toast('Use a web link that starts with http or https'); return}
+    if((link||due)&&hw==='none')hw='todo';
+    var ex2=null;
+    if(UI.editId){ex2=S.sessions.filter(function(x){return x.id===UI.editId})[0]||null}
+    if(ex2){ex2.date=d; ex2.hours=h; ex2.content=content; ex2.link=link; ex2.due=due; ex2.hw=hw}
+    else{S.sessions.push({id:uid(),sid:UI.sid,date:d,hours:h,content:content,link:link,due:due,hw:hw})}
+    UI.editId=null; UI.draft={content:'',link:'',due:'',status:'none'};
+    UI.formDate=d; UI.formHours=String(h);
+    var moved=d.slice(0,7)!==UI.month; if(moved)UI.month=d.slice(0,7);
+    touch(); render(); toast(ex2?'Study day updated':(moved?'Added to '+monthLabel(UI.month):'Study day added'));
+  }else if(f==='starForm'){
+    var dd=$('#star-date').value||todayStr();
+    S.stars.push({id:uid(),sid:UI.sid,date:dd,note:$('#star-note').value.trim()});
+    touch(); render(); toast('Star added');
+  }
+});
+window.addEventListener('hashchange',function(){
+  var h=location.hash.slice(1);
+  if(TABS.some(function(t){return t[0]===h})&&h!==UI.tab){UI.tab=h; UI.confirm=null; render()}
+});
+
+/* ---------- boot ---------- */
+(function(){
+  var h=location.hash.slice(1);
+  if(TABS.some(function(t){return t[0]===h}))UI.tab=h;
+  try{var raw=localStorage.getItem(LS); if(raw)S=normalize(JSON.parse(raw))}catch(e){}
+  if(!S)S=seed();
+  render();
+  setInterval(tick,20000);
+
+  var c=window.claude;
+  if(!c||!c.use)return;
+  var timer=new Promise(function(r){setTimeout(function(){r(null)},10000)});
+  Promise.race([c.use('db').catch(function(){return null}),timer]).then(function(db){
+    if(!db)return;
+    dbRef=db.doc('tracker/main');
+    dbRef.onSnapshot(function(snap){
+      if(!snap.exists){ if(S.at>0)flush(); return }
+      var d=snap.data(), r=null;
+      try{r=JSON.parse(d.json)}catch(e){return}
+      var rat=d.at||r.at||0;
+      if(rat>(S.at||0)){S=normalize(r); S.at=rat; try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){} setStatus('Saved'); render()}
+      else if((S.at||0)>rat){flush()}
+      else if(!UI.status){setStatus('Saved')}
+    },function(){setStatus('Saved on this device')});
+  });
+})();
+})();
+</script>
+
+</body></html>
